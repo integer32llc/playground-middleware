@@ -3,6 +3,7 @@ extern crate time;
 
 use std::path::{Path, PathBuf};
 use std::fs::{File, Metadata};
+use std::io;
 
 use iron::prelude::*;
 use iron::middleware::Handler;
@@ -16,18 +17,31 @@ pub struct Staticfile {
 }
 
 impl Staticfile {
-    pub fn new<P>(root: P) -> Staticfile
+    pub fn new<P>(root: P) -> io::Result<Staticfile>
         where P: AsRef<Path>
     {
-        Staticfile {
-            root: root.as_ref().into(),
-        }
+        let root = try!(root.as_ref().canonicalize());
+
+        Ok(Staticfile {
+            root: root,
+        })
     }
 
-    fn resolve_path(&self, path: &[&str]) -> PathBuf {
-        // TODO: prevent escaping the root path via '..'
-        let path = path.join("/");
-        self.root.join(path)
+    fn resolve_path(&self, path: &[&str]) -> Result<PathBuf, Box<::std::error::Error>> {
+        let mut resolved = self.root.clone();
+
+        for component in path {
+            resolved.push(component);
+        }
+
+        let resolved = try!(resolved.canonicalize());
+
+        // Protect against path/directory traversal
+        if !resolved.starts_with(&self.root) {
+            Err(From::from("Cannot leave root path"))
+        } else {
+            Ok(resolved)
+        }
     }
 }
 
@@ -40,7 +54,10 @@ impl Handler for Staticfile {
             _ => return Ok(Response::with(status::MethodNotAllowed)),
         }
 
-        let file_path = self.resolve_path(&req.url.path());
+        let file_path = match self.resolve_path(&req.url.path()) {
+            Ok(file_path) => file_path,
+            Err(_) => return Ok(Response::with(status::NotFound)),
+        };
 
         println!("Accessing {}", file_path.display());
 
@@ -114,5 +131,71 @@ impl Zeta {
         // planned lifetime of the universe
         let ts = time::Timespec::new(since_epoch.as_secs() as i64, 0);
         Ok(time::at_utc(ts))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    extern crate tempdir;
+
+    use super::*;
+    use std::path::{Path, PathBuf};
+    use std::fs::{File, DirBuilder};
+    use self::tempdir::TempDir;
+
+    struct TestFilesystemSetup(TempDir);
+
+    impl TestFilesystemSetup {
+        fn new() -> Self {
+            TestFilesystemSetup(TempDir::new("test").expect("Could not create test directory"))
+        }
+
+        fn path(&self) -> &Path {
+            self.0.path()
+        }
+
+        fn dir(&self, name: &str) -> PathBuf {
+            let p = self.path().join(name);
+            DirBuilder::new().recursive(true).create(&p).expect("Could not create directory");
+            p
+        }
+
+        fn file(&self, name: &str) -> PathBuf {
+            let p = self.path().join(name);
+            File::create(&p).expect("Could not create file");
+            p
+        }
+    }
+
+    #[test]
+    fn staticfile_resolves_paths() {
+        let fs = TestFilesystemSetup::new();
+        fs.file("index.html");
+
+        let sf = Staticfile::new(fs.path()).unwrap();
+        let path = sf.resolve_path(&["index.html"]);
+        assert!(path.unwrap().ends_with("index.html"));
+    }
+
+    #[test]
+    fn staticfile_resolves_nested_paths() {
+        let fs = TestFilesystemSetup::new();
+        fs.dir("dir");
+        fs.file("dir/index.html");
+
+        let sf = Staticfile::new(fs.path()).unwrap();
+        let path = sf.resolve_path(&["dir", "index.html"]);
+        assert!(path.unwrap().ends_with("dir/index.html"));
+    }
+
+    #[test]
+    fn staticfile_disallows_resolving_out_of_root() {
+        let fs = TestFilesystemSetup::new();
+        fs.file("naughty.txt");
+        let dir = fs.dir("dir");
+
+        let sf = Staticfile::new(dir).unwrap();
+        let path = sf.resolve_path(&["..", "naughty.txt"]);
+        assert!(path.is_err());
     }
 }
