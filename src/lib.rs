@@ -1,15 +1,15 @@
 extern crate iron;
 extern crate time;
 
-use std::path::{Path, PathBuf};
 use std::fs::{File, Metadata};
 use std::io;
+use std::path::{Path, PathBuf};
 
-use iron::prelude::*;
-use iron::middleware::Handler;
-use iron::method::Method;
-use iron::modifiers::Header;
 use iron::headers::{HttpDate, LastModified, IfModifiedSince};
+use iron::method::Method;
+use iron::middleware::Handler;
+use iron::modifiers::Header;
+use iron::prelude::*;
 use iron::status;
 
 pub struct Staticfile {
