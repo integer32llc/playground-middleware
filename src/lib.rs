@@ -125,10 +125,15 @@ impl Zeta {
         let modified = try!(self.metadata.modified());
         let since_epoch = try!(modified.duration_since(::std::time::UNIX_EPOCH));
 
-        // TODO [TEST]: HTTP times don't have nanosec precision
-
+        // HTTP times don't have nanosecond precision, so we truncate
+        // the modification time.
         // Converting to i64 should be safe until we get beyond the
         // planned lifetime of the universe
+        //
+        // TODO: Investigate how to write a test for this. Changing
+        // the modification time of a file with greater than second
+        // precision appears to be something that only is possible to
+        // do on Linux.
         let ts = time::Timespec::new(since_epoch.as_secs() as i64, 0);
         Ok(time::at_utc(ts))
     }
