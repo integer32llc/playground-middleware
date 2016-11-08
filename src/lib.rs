@@ -13,8 +13,10 @@ use iron::prelude::*;
 use iron::status;
 
 mod prefix;
+mod cache;
 
 pub use prefix::Prefix;
+pub use cache::Cache;
 
 pub struct Staticfile {
     root: PathBuf,
