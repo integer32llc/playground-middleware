@@ -12,6 +12,10 @@ use iron::modifiers::Header;
 use iron::prelude::*;
 use iron::status;
 
+mod prefix;
+
+pub use prefix::Prefix;
+
 pub struct Staticfile {
     root: PathBuf,
 }
