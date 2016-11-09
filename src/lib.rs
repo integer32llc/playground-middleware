@@ -16,9 +16,11 @@ use iron::status;
 
 mod prefix;
 mod cache;
+mod modify_with;
 
 pub use prefix::Prefix;
 pub use cache::Cache;
+pub use modify_with::ModifyWith;
 
 /// Recursively serves files from the specified root directory.
 pub struct Staticfile {
