@@ -71,13 +71,13 @@ impl Handler for Staticfile {
             Err(_) => return Ok(Response::with(status::NotFound)),
         };
 
-        let zeta = match Zeta::search(file_path) {
-            Ok(zeta) => zeta,
+        let file = match StaticFileWithMetadata::search(file_path) {
+            Ok(file) => file,
             Err(_) => return Ok(Response::with(status::NotFound)),
         };
 
         let client_last_modified = req.headers.get::<IfModifiedSince>();
-        let last_modified = zeta.last_modified().ok().map(HttpDate);
+        let last_modified = file.last_modified().ok().map(HttpDate);
 
         if let (Some(client_last_modified), Some(last_modified)) = (client_last_modified, last_modified) {
             trace!("Comparing {} (file) <= {} (req)", last_modified, client_last_modified.0);
@@ -89,45 +89,45 @@ impl Handler for Staticfile {
         match last_modified {
             Some(last_modified) => {
                 let last_modified = LastModified(last_modified);
-                Ok(Response::with((status::Ok, Header(last_modified), zeta.file)))
+                Ok(Response::with((status::Ok, Header(last_modified), file.file)))
             },
-            None => Ok(Response::with((status::Ok, zeta.file)))
+            None => Ok(Response::with((status::Ok, file.file)))
         }
     }
 }
 
-struct Zeta {
+struct StaticFileWithMetadata {
     file: File,
     metadata: Metadata,
 }
 
-impl Zeta {
-    pub fn search<P>(path: P) -> Result<Zeta, Box<error::Error>> // TODO: unbox
+impl StaticFileWithMetadata {
+    pub fn search<P>(path: P) -> Result<StaticFileWithMetadata, Box<error::Error>> // TODO: unbox
         where P: Into<PathBuf>
     {
         let mut file_path = path.into();
         trace!("Opening {}", file_path.display());
-        let mut zeta = try!(Zeta::open(&file_path));
+        let mut file = try!(StaticFileWithMetadata::open(&file_path));
 
         // Look for index.html inside of a directory
-        if zeta.metadata.is_dir() {
+        if file.metadata.is_dir() {
             file_path.push("index.html");
             trace!("Redirecting to index {}", file_path.display());
-            zeta = try!(Zeta::open(&file_path));
+            file = try!(StaticFileWithMetadata::open(&file_path));
         }
 
-        assert!(zeta.metadata.is_file()); // TODO: Panicking
+        assert!(file.metadata.is_file()); // TODO: Panicking
 
-        Ok(zeta)
+        Ok(file)
     }
 
-    fn open<P>(path: P) -> Result<Zeta, Box<error::Error>>
+    fn open<P>(path: P) -> Result<StaticFileWithMetadata, Box<error::Error>>
         where P: AsRef<Path>
     {
         let file = try!(File::open(path));
         let metadata = try!(file.metadata());
 
-        Ok(Zeta {
+        Ok(StaticFileWithMetadata {
             file: file,
             metadata: metadata,
         })
