@@ -1,9 +1,9 @@
 extern crate env_logger;
 extern crate iron;
-extern crate staticfile_adv;
+extern crate playground_middleware;
 
 use iron::prelude::*;
-use staticfile_adv::{Staticfile, Prefix, ModifyWith, Cache, GuessContentType};
+use playground_middleware::{Staticfile, Prefix, ModifyWith, Cache, GuessContentType};
 use std::time::Duration;
 
 const ADDRESS: &'static str = "127.0.0.1:8000";

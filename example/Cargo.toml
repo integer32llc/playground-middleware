@@ -7,5 +7,5 @@ version = "0.1.0"
 env_logger = "0.3.5"
 iron = "0.4.0"
 
-[dependencies.staticfile-adv]
+[dependencies.playground-middleware]
 path = ".."

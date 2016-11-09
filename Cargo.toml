@@ -1,6 +1,6 @@
 [package]
 authors = ["Jake Goulding <jake.goulding@gmail.com>"]
-name = "staticfile-adv"
+name = "playground-middleware"
 version = "0.1.0"
 
 [dependencies]
