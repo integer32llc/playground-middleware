@@ -2,8 +2,7 @@ use iron::prelude::*;
 use iron::AfterMiddleware;
 use iron::modifier::Modifier;
 
-/// Applies a specific middleware to any request that starts with a
-/// given path.
+/// Applies a modifier to every request that starts with a given path.
 pub struct Prefix<M> {
     prefix: Vec<String>,
     modifier: M,

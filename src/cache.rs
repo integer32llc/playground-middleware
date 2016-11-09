@@ -7,6 +7,7 @@ use iron::modifiers::Header;
 use iron::prelude::*;
 use iron::status;
 
+/// Sets the Cache-Control header for successful responses.
 #[derive(Debug, Copy, Clone)]
 pub struct Cache(u32);
 

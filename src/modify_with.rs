@@ -2,7 +2,7 @@ use iron::prelude::*;
 use iron::AfterMiddleware;
 use iron::modifier::Modifier;
 
-/// Applies a modifier to every request
+/// Applies a modifier to every request.
 pub struct ModifyWith<M> {
     modifier: M,
 }
