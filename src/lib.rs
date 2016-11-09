@@ -57,8 +57,6 @@ impl Staticfile {
     }
 }
 
-// TODO [TEST]: Returns "not allowed" for POST etc.
-
 impl Handler for Staticfile {
     fn handle(&self, req: &mut Request) -> IronResult<Response> {
         match req.method {
@@ -153,11 +151,18 @@ impl StaticFileWithMetadata {
 
 #[cfg(test)]
 mod test {
+    extern crate iron_test;
+    extern crate hyper;
     extern crate tempdir;
 
     use super::*;
+
     use std::path::{Path, PathBuf};
     use std::fs::{File, DirBuilder};
+
+    use ::iron::status;
+    use self::iron_test::request;
+    use self::hyper::header::Headers;
     use self::tempdir::TempDir;
 
     struct TestFilesystemSetup(TempDir);
@@ -214,5 +219,16 @@ mod test {
         let sf = Staticfile::new(dir).unwrap();
         let path = sf.resolve_path(&["..", "naughty.txt"]);
         assert!(path.is_err());
+    }
+
+    #[test]
+    fn staticfile_disallows_post_requests() {
+        let fs = TestFilesystemSetup::new();
+        let sf = Staticfile::new(fs.path()).unwrap();
+
+        let response = request::post("http://127.0.0.1/", Headers::new(), "", &sf);
+
+        let response = response.expect("Response was an error");
+        assert_eq!(response.status, Some(status::MethodNotAllowed));
     }
 }
