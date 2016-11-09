@@ -5,6 +5,7 @@ use iron::headers::{CacheDirective, CacheControl};
 use iron::modifier::Modifier;
 use iron::modifiers::Header;
 use iron::prelude::*;
+use iron::status;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Cache(u32);
@@ -20,6 +21,11 @@ impl Cache {
 
 impl Modifier<Response> for Cache {
     fn modify(self, response: &mut Response) {
+        match response.status {
+            Some(status::Ok) | Some(status::NotModified) => (),
+            _ => return,
+        }
+
         Header(CacheControl(vec![
             CacheDirective::Public,
             CacheDirective::MaxAge(self.0),

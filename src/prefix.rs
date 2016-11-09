@@ -1,7 +1,6 @@
 use iron::prelude::*;
 use iron::AfterMiddleware;
 use iron::modifier::Modifier;
-use iron::status;
 
 /// Applies a specific middleware to any request that starts with a
 /// given path.
@@ -26,7 +25,7 @@ impl<M> Prefix<M> {
             return false;
         }
 
-       path.iter().zip(self.prefix.iter())
+        path.iter().zip(self.prefix.iter())
             .all(|(path, prefix)| path == prefix)
     }
 }
@@ -35,11 +34,6 @@ impl<M> AfterMiddleware for Prefix<M>
     where M: Clone + Modifier<Response> + Send + Sync + 'static
 {
     fn after(&self, req: &mut Request, mut res: Response) -> IronResult<Response> {
-        match res.status {
-            Some(status::Ok) => {}
-            _ => return Ok(res),
-        }
-
         if self.prefix_matches(&req.url.path()) {
             self.modifier.clone().modify(&mut res);
         }
