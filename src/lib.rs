@@ -18,6 +18,7 @@ mod cache;
 pub use prefix::Prefix;
 pub use cache::Cache;
 
+/// Recursively serves files from the specified root directory.
 pub struct Staticfile {
     root: PathBuf,
 }
