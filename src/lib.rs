@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate log;
 extern crate iron;
 extern crate time;
 
@@ -66,8 +68,6 @@ impl Handler for Staticfile {
             Err(_) => return Ok(Response::with(status::NotFound)),
         };
 
-        println!("Accessing {}", file_path.display());
-
         let zeta = match Zeta::search(file_path) {
             Ok(zeta) => zeta,
             Err(_) => return Ok(Response::with(status::NotFound)),
@@ -77,7 +77,7 @@ impl Handler for Staticfile {
         let last_modified = zeta.last_modified().ok().map(HttpDate);
 
         if let (Some(client_last_modified), Some(last_modified)) = (client_last_modified, last_modified) {
-            println!("Comparing {} <= {}", last_modified, client_last_modified.0);
+            trace!("Comparing {} (file) <= {} (req)", last_modified, client_last_modified.0);
             if last_modified <= client_last_modified.0 {
                 return Ok(Response::with(status::NotModified));
             }
@@ -103,11 +103,13 @@ impl Zeta {
         where P: Into<PathBuf>
     {
         let mut file_path = path.into();
+        trace!("Opening {}", file_path.display());
         let mut zeta = try!(Zeta::open(&file_path));
 
         // Look for index.html inside of a directory
         if zeta.metadata.is_dir() {
             file_path.push("index.html");
+            trace!("Redirecting to index {}", file_path.display());
             zeta = try!(Zeta::open(&file_path));
         }
 
