@@ -2,6 +2,8 @@
 extern crate log;
 extern crate iron;
 extern crate time;
+extern crate mime;
+extern crate mime_guess;
 
 use std::fs::{File, Metadata};
 use std::path::{Path, PathBuf};
@@ -15,13 +17,15 @@ use iron::modifiers::Header;
 use iron::prelude::*;
 use iron::status;
 
-mod prefix;
 mod cache;
+mod guess_content_type;
 mod modify_with;
+mod prefix;
 
-pub use prefix::Prefix;
 pub use cache::Cache;
+pub use guess_content_type::GuessContentType;
 pub use modify_with::ModifyWith;
+pub use prefix::Prefix;
 
 /// Recursively serves files from the specified root directory.
 pub struct Staticfile {
