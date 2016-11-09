@@ -4,8 +4,9 @@ extern crate iron;
 extern crate time;
 
 use std::fs::{File, Metadata};
-use std::io;
 use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
+use std::{error, io};
 
 use iron::headers::{HttpDate, LastModified, IfModifiedSince};
 use iron::method::Method;
@@ -38,7 +39,7 @@ impl Staticfile {
         })
     }
 
-    fn resolve_path(&self, path: &[&str]) -> Result<PathBuf, Box<::std::error::Error>> {
+    fn resolve_path(&self, path: &[&str]) -> Result<PathBuf, Box<error::Error>> {
         let mut resolved = self.root.clone();
 
         for component in path {
@@ -101,7 +102,7 @@ struct Zeta {
 }
 
 impl Zeta {
-    pub fn search<P>(path: P) -> Result<Zeta, Box<::std::error::Error>> // TODO: unbox
+    pub fn search<P>(path: P) -> Result<Zeta, Box<error::Error>> // TODO: unbox
         where P: Into<PathBuf>
     {
         let mut file_path = path.into();
@@ -120,7 +121,7 @@ impl Zeta {
         Ok(zeta)
     }
 
-    fn open<P>(path: P) -> Result<Zeta, Box<::std::error::Error>>
+    fn open<P>(path: P) -> Result<Zeta, Box<error::Error>>
         where P: AsRef<Path>
     {
         let file = try!(File::open(path));
@@ -132,9 +133,9 @@ impl Zeta {
         })
     }
 
-    pub fn last_modified(&self) -> Result<time::Tm, Box<::std::error::Error>> {
+    pub fn last_modified(&self) -> Result<time::Tm, Box<error::Error>> {
         let modified = try!(self.metadata.modified());
-        let since_epoch = try!(modified.duration_since(::std::time::UNIX_EPOCH));
+        let since_epoch = try!(modified.duration_since(UNIX_EPOCH));
 
         // HTTP times don't have nanosecond precision, so we truncate
         // the modification time.
