@@ -114,9 +114,11 @@ impl StaticFileWithMetadata {
             file = try!(StaticFileWithMetadata::open(&file_path));
         }
 
-        assert!(file.metadata.is_file()); // TODO: Panicking
-
-        Ok(file)
+        if file.metadata.is_file() {
+            Ok(file)
+        } else {
+            Err(From::from("Requested path was not a regular file"))
+        }
     }
 
     fn open<P>(path: P) -> Result<StaticFileWithMetadata, Box<error::Error>>
