@@ -1,9 +1,17 @@
+use std::ffi::OsString;
 use std::fs::{File, Metadata};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 use std::{error, io};
 
-use iron::headers::{HttpDate, LastModified, IfModifiedSince};
+use iron::headers::{
+    AcceptEncoding,
+    ContentEncoding,
+    Encoding,
+    HttpDate,
+    IfModifiedSince,
+    LastModified,
+};
 use iron::method::Method;
 use iron::middleware::Handler;
 use iron::modifiers::Header;
@@ -58,7 +66,14 @@ impl Handler for Staticfile {
             Err(_) => return Ok(Response::with(status::NotFound)),
         };
 
-        let file = match StaticFileWithMetadata::search(file_path) {
+        let accept_gz = match req.headers.get::<AcceptEncoding>() {
+            Some(accept) => {
+                accept.0.iter().any(|qi| qi.item == Encoding::Gzip)
+            }
+            None => false,
+        };
+
+        let file = match StaticFileWithMetadata::search(file_path, accept_gz) {
             Ok(file) => file,
             Err(_) => return Ok(Response::with(status::NotFound)),
         };
@@ -73,12 +88,15 @@ impl Handler for Staticfile {
             }
         }
 
+        let encoding = if file.is_gz { Encoding::Gzip } else { Encoding::Identity };
+        let encoding = ContentEncoding(vec![encoding]);
+
         match last_modified {
             Some(last_modified) => {
                 let last_modified = LastModified(last_modified);
-                Ok(Response::with((status::Ok, Header(last_modified), file.file)))
+                Ok(Response::with((status::Ok, Header(last_modified), Header(encoding), file.file)))
             },
-            None => Ok(Response::with((status::Ok, file.file)))
+            None => Ok(Response::with((status::Ok, Header(encoding), file.file)))
         }
     }
 }
@@ -86,10 +104,11 @@ impl Handler for Staticfile {
 struct StaticFileWithMetadata {
     file: File,
     metadata: Metadata,
+    is_gz: bool,
 }
 
 impl StaticFileWithMetadata {
-    pub fn search<P>(path: P) -> Result<StaticFileWithMetadata, Box<error::Error>> // TODO: unbox
+    pub fn search<P>(path: P, allow_gz: bool) -> Result<StaticFileWithMetadata, Box<error::Error>> // TODO: unbox
         where P: Into<PathBuf>
     {
         let mut file_path = path.into();
@@ -104,7 +123,26 @@ impl StaticFileWithMetadata {
         }
 
         if file.metadata.is_file() {
-            Ok(file)
+            if allow_gz {
+                // Find the foo.gz sibling of foo
+                let mut side_by_side_path: OsString = file_path.into();
+                side_by_side_path.push(".gz");
+                file_path = side_by_side_path.into();
+                trace!("Attempting to find side-by-side GZ {}", file_path.display());
+                match StaticFileWithMetadata::open(&file_path) {
+                    Ok(mut gz_file) => {
+                        if gz_file.metadata.is_file() {
+                            gz_file.is_gz = true;
+                            Ok(gz_file)
+                        } else {
+                            Ok(file)
+                        }
+                    },
+                    Err(_) => Ok(file),
+                }
+            } else {
+                Ok(file)
+            }
         } else {
             Err(From::from("Requested path was not a regular file"))
         }
@@ -119,6 +157,7 @@ impl StaticFileWithMetadata {
         Ok(StaticFileWithMetadata {
             file: file,
             metadata: metadata,
+            is_gz: false,
         })
     }
 
